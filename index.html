@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Hearing Test</title>
     <link rel="stylesheet" href="css/style.css" />
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/assets/favicon.svg">
   </head>
   <body>
     <div id="app">
@@ -16,8 +18,10 @@
       <main>
         <section id="start-screen" class="screen">
           <div class="controls">
-            <div style="text-align:center;">
+            <div style="text-align:center; max-width:720px; margin:0 auto;">
               <p>Click Start to begin the hearing test.</p>
+              <p style="font-weight:600; color:#222; text-align:left; background:#fff9; padding:10px; border-radius:8px;">Important: This is not a medical test. It provides an informal hearing estimation in your current environment. Scores are relative — they only make sense compared to other people who used the same device and settings. This test does not diagnose hearing loss.</p>
+              <p style="text-align:left; margin-top:8px;">Tune your computer volume first: press <strong>Test Volume</strong> and set system volume so the low-volume sample is barely audible. This helps keep results more consistent across sessions.</p>
               <div style="margin:12px 0; display:flex;gap:10px;align-items:center;justify-content:center;">
                 <label for="num-questions">Questions:</label>
                 <input id="num-questions" type="number" min="4" max="200" step="2" value="40" style="width:90px;padding:6px;border-radius:8px;border:1px solid rgba(15,23,42,0.06)" />

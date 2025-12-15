@@ -42,12 +42,12 @@ const USE_TTS = true;
 const state = {
   trials: [],
   currentTrial: 0,
-  maxTrials: 20,
+  maxTrials: 40,
   results: {left:[], right:[]},
-  // Staircase per ear
+  // Staircase per ear (tuned for precision)
   stair: {
-    left: {level:70, step:8, minStep:1, lastDirection:null, reversals:[], history:[], done:false, reversalTarget:6},
-    right: {level:70, step:8, minStep:1, lastDirection:null, reversals:[], history:[], done:false, reversalTarget:6}
+    left: {level:70, step:6, minStep:1, correctStreak:0, lastDirection:null, reversals:[], history:[], done:false, reversalTarget:8},
+    right: {level:70, step:6, minStep:1, correctStreak:0, lastDirection:null, reversals:[], history:[], done:false, reversalTarget:8}
   }
 };
 
@@ -223,22 +223,42 @@ function updateStaircase(ear, correct){
   const s = state.stair[ear];
   if(s.done) return;
   const prevLevel = s.level;
-  const direction = correct ? 'down' : 'up';
-  // detect reversal
-  if(s.lastDirection && s.lastDirection !== direction){
-    // record reversal at previous level
-    s.reversals.push(prevLevel);
-    // reduce step size after 3 reversals to refine
-    if(s.reversals.length === 3){
-      s.step = Math.max(s.minStep, Math.round(s.step/2));
-    }
+
+  // 2-down-1-up: need two consecutive correct responses to step down;
+  // a single incorrect response steps up.
+  if(correct){
+    s.correctStreak = (s.correctStreak || 0) + 1;
+  } else {
+    s.correctStreak = 0;
   }
-  s.lastDirection = direction;
-  // adjust level
-  if(correct) s.level = Math.max(1, s.level - s.step);
-  else s.level = Math.min(100, s.level + s.step);
+
+  let moved = false;
+  if(!correct){
+    // wrong -> step up immediately
+    s.level = Math.min(100, s.level + s.step);
+    s.lastDirection = 'up';
+    moved = true;
+  } else if(s.correctStreak >= 2){
+    // two corrects in a row -> step down
+    s.level = Math.max(1, s.level - s.step);
+    s.lastDirection = 'down';
+    s.correctStreak = 0; // reset after applying
+    moved = true;
+  }
+
+  // detect reversal on direction change and record previous level
+  if(moved){
+    if(s._prevDirection && s._prevDirection !== s.lastDirection){
+      s.reversals.push(prevLevel);
+      // after 4 reversals, halve the step for finer adjustments
+      if(s.reversals.length === 4){
+        s.step = Math.max(s.minStep, Math.round(s.step/2));
+      }
+    }
+    s._prevDirection = s.lastDirection;
+  }
+
   s.history.push({level: s.level, correct, time: Date.now()});
-  // mark done if enough reversals
   if(s.reversals.length >= s.reversalTarget){
     s.done = true;
   }
@@ -261,10 +281,6 @@ function finishTest(){
   const rightScore = summarizeEar('right');
   const resultsEl = document.getElementById('results');
   resultsEl.innerHTML = `<p>Left ear score: <strong>${leftScore}</strong></p><p>Right ear score: <strong>${rightScore}</strong></p>`;
-  // show a tiny recommendation
-  const rec = document.createElement('p');
-  rec.innerHTML = recommendation(leftScore, rightScore);
-  resultsEl.appendChild(rec);
   // mark todo 1 completed and update plan
   completeTodo1();
 }
@@ -287,11 +303,8 @@ function summarizeEar(ear){
 }
 
 function recommendation(l, r){
-  if(l==='N/A' || r==='N/A') return 'Not enough data.';
-  const li = Number(l), ri = Number(r);
-  if(li<30 || ri<30) return 'Recommend audiology referral. Low score detected.';
-  if(li<60 || ri<60) return 'Follow-up screening recommended.';
-  return 'Hearing appears within normal limits for this screen.';
+  // recommendation removed — this test is not medical and does not provide clinical advice
+  return '';
 }
 
 function startTrialTimer(){
