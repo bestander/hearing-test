@@ -18,10 +18,14 @@
           <div class="controls">
             <div style="text-align:center;">
               <p>Click Start to begin the hearing test.</p>
-              <div style="margin-bottom:8px">
-                <button id="tts-test-btn">Test TTS Volume</button>
+              <div style="margin:12px 0; display:flex;gap:10px;align-items:center;justify-content:center;">
+                <label for="num-questions">Questions:</label>
+                <input id="num-questions" type="number" min="4" max="200" step="2" value="40" style="width:90px;padding:6px;border-radius:8px;border:1px solid rgba(15,23,42,0.06)" />
               </div>
-              <button id="start-btn">Start Test</button>
+              <div style="margin-bottom:8px">
+                <button id="tts-test-btn" class="btn btn-ghost">Test Volume</button>
+              </div>
+              <button id="start-btn" class="btn btn-primary">Start Test</button>
             </div>
           </div>
         </section>
@@ -40,7 +44,7 @@
         <section id="results-screen" class="screen hidden">
           <h2>Results</h2>
           <div id="results"></div>
-          <button id="restart-btn">Restart</button>
+          <button id="restart-btn" class="btn btn-primary">Restart</button>
         </section>
       </main>
     </div>
