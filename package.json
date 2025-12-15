@@ -1,0 +1,9 @@
+{
+  "name": "hearing-test",
+  "version": "0.1.0",
+  "description": "Kids hearing test prototype",
+  "private": true,
+  "scripts": {
+    "start": "npx http-server -p 8000"
+  }
+}
