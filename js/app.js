@@ -46,8 +46,8 @@ const state = {
   results: {left:[], right:[]},
   // Staircase per ear (tuned for precision)
   stair: {
-    left: {level:70, step:6, minStep:1, correctStreak:0, lastDirection:null, reversals:[], history:[], done:false, reversalTarget:8},
-    right: {level:70, step:6, minStep:1, correctStreak:0, lastDirection:null, reversals:[], history:[], done:false, reversalTarget:8}
+    left: {level:80, step:8, minStep:1, correctStreak:0, lastDirection:null, reversals:[], history:[], done:false, reversalTarget:8, phase:'rapid'},
+    right: {level:80, step:8, minStep:1, correctStreak:0, lastDirection:null, reversals:[], history:[], done:false, reversalTarget:8, phase:'rapid'}
   }
 };
 
@@ -224,8 +224,8 @@ function updateStaircase(ear, correct){
   if(s.done) return;
   const prevLevel = s.level;
 
-  // 2-down-1-up: need two consecutive correct responses to step down;
-  // a single incorrect response steps up.
+  // Phase handling: start with a rapid phase (1-down-1-up) to get quieter sooner,
+  // then switch to precise phase (2-down-1-up) after a few reversals.
   if(correct){
     s.correctStreak = (s.correctStreak || 0) + 1;
   } else {
@@ -233,25 +233,44 @@ function updateStaircase(ear, correct){
   }
 
   let moved = false;
-  if(!correct){
-    // wrong -> step up immediately
-    s.level = Math.min(100, s.level + s.step);
-    s.lastDirection = 'up';
-    moved = true;
-  } else if(s.correctStreak >= 2){
-    // two corrects in a row -> step down
-    s.level = Math.max(1, s.level - s.step);
-    s.lastDirection = 'down';
-    s.correctStreak = 0; // reset after applying
-    moved = true;
+  const jitter = Math.random() < 0.6 ? (Math.random() < 0.5 ? -1 : 1) : 0; // occasional +/-1 jitter
+
+  if(s.phase === 'rapid'){
+    // 1-down-1-up
+    if(!correct){
+      s.level = Math.min(100, s.level + s.step + jitter);
+      s.lastDirection = 'up';
+      moved = true;
+    } else {
+      s.level = Math.max(1, s.level - s.step + jitter);
+      s.lastDirection = 'down';
+      moved = true;
+    }
+  } else {
+    // precise: 2-down-1-up
+    if(!correct){
+      s.level = Math.min(100, s.level + s.step + jitter);
+      s.lastDirection = 'up';
+      moved = true;
+    } else if(s.correctStreak >= 2){
+      s.level = Math.max(1, s.level - s.step + jitter);
+      s.lastDirection = 'down';
+      s.correctStreak = 0;
+      moved = true;
+    }
   }
 
   // detect reversal on direction change and record previous level
   if(moved){
     if(s._prevDirection && s._prevDirection !== s.lastDirection){
       s.reversals.push(prevLevel);
-      // after 4 reversals, halve the step for finer adjustments
-      if(s.reversals.length === 4){
+      // after 3 reversals, switch to precise phase and halve step for finer adjustments
+      if(s.reversals.length === 3 && s.phase === 'rapid'){
+        s.phase = 'precise';
+        s.step = Math.max(s.minStep, Math.round(s.step/2));
+      }
+      // after 6 reversals, halve step again to tighten
+      if(s.reversals.length === 6){
         s.step = Math.max(s.minStep, Math.round(s.step/2));
       }
     }
@@ -280,7 +299,7 @@ function finishTest(){
   const leftScore = summarizeEar('left');
   const rightScore = summarizeEar('right');
   const resultsEl = document.getElementById('results');
-  resultsEl.innerHTML = `<p>Left ear score: <strong>${leftScore}</strong></p><p>Right ear score: <strong>${rightScore}</strong></p>`;
+  resultsEl.innerHTML = `<p>Left ear reliable level: <strong>${leftScore}</strong></p><p>Right ear reliable level: <strong>${rightScore}</strong></p>`;
   // mark todo 1 completed and update plan
   completeTodo1();
 }
@@ -288,10 +307,11 @@ function finishTest(){
 function summarizeEar(ear){
   const s = state.stair[ear];
   if(s && s.reversals && s.reversals.length>0){
-    // use mean of reversals as threshold
-    const rev = s.reversals.slice(-Math.min(s.reversals.length, 6));
-    const avg = Math.round(rev.reduce((a,b)=>a+b,0)/rev.length);
-    return avg;
+    // use median of last N reversals as reliable threshold
+    const rev = s.reversals.slice(-Math.min(s.reversals.length, 6)).slice().sort((a,b)=>a-b);
+    const mid = Math.floor(rev.length/2);
+    const median = rev.length % 2 ? rev[mid] : Math.round((rev[mid-1]+rev[mid])/2);
+    return median;
   }
   const arr = state.results[ear];
   if(!arr.length) return 'N/A';
